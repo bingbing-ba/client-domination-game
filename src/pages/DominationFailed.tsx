@@ -2,9 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import Container from '../components/Container';
 import { Header } from '../components/Header';
+import { useContext } from 'react';
+import { ParticipantContext } from '../ParticipantContext';
 
 function DominationFailed() {
   const navigate = useNavigate();
+  const { setId, setStartedAt: setUpdatedAt } = useContext(ParticipantContext);
   return (
     <Container>
       <header className="mx-auto max-w-2xl text-center">
@@ -22,6 +25,8 @@ function DominationFailed() {
       <div className="mt-20">
         <Button
           onClick={() => {
+            setId(null);
+            setUpdatedAt(null);
             navigate('/');
           }}
         >

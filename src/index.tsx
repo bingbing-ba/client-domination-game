@@ -5,6 +5,7 @@ import './index.css';
 import Home from './pages/Home';
 import DominationFailed from './pages/DominationFailed';
 import DominationSuccessed from './pages/DominationSuccessed';
+import { ParticipantContextProvider } from './ParticipantContext';
 
 const router = createBrowserRouter([
   {
@@ -28,7 +29,8 @@ const router = createBrowserRouter([
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <ParticipantContextProvider>
+      <RouterProvider router={router} />
+    </ParticipantContextProvider>
   </React.StrictMode>
 );
-

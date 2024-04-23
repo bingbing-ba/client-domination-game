@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { doc, getFirestore, onSnapshot, getDoc } from 'firebase/firestore';
-import { useEffect, useMemo, useState } from 'react';
+import { doc, getDoc, getFirestore, onSnapshot } from 'firebase/firestore';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { ParticipantContext } from './ParticipantContext';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDFfvAWdTBhsLfuPcSkM1Q3WbtQ9uhORf4',
@@ -26,7 +27,7 @@ type RoundRecordsType = {
     email: string;
   };
 };
-type RoundType = {
+type RoundEntity = {
   [id: string]: number;
   startAt: number;
   updatedAt: number;
@@ -41,33 +42,61 @@ const getCurrentRoundURL =
     : 'https://getcurrentround-lv3ojcseyq-uc.a.run.app/';
 
 const useFirestore = () => {
-  const [round, setRound] = useState<RoundType>({ startAt: 0, updatedAt: 0 });
+  const [roundEntity, setRoundEntity] = useState<RoundEntity>({ startAt: 0, updatedAt: 0 });
   const [currentRound, setCurrentRound] = useState<number>(0);
+  const { setStartedAt } = useContext(ParticipantContext);
   useEffect(() => {
     fetch(getCurrentRoundURL)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to get current round');
+        return res.json();
+      })
       .then((data) => data.currentRound && setCurrentRound(data.currentRound));
+  }, []);
+
+  const [winners, setWinners] = useState<{ round: number; nickname: string; amount: number }[]>([]);
+
+  useEffect(() => {
+    const roundRecordsRef = doc(db, 'domination-game', 'roundRecords');
+    getDoc(roundRecordsRef).then((doc) => {
+      const roundRecords = doc.data() as RoundRecordsType | undefined;
+      if (roundRecords) {
+        setWinners([]);
+        for (let i = 1; i <= roundRecords.thisRound; i++) {
+          if (!roundRecords[i]) continue;
+          setWinners((prev) => [
+            ...prev,
+            { round: i, nickname: roundRecords[i].nickname, amount: roundRecords[i].amount },
+          ]);
+        }
+      }
+    });
   }, []);
   useEffect(() => {
     const roundRef = doc(db, 'domination-game', 'round-' + currentRound);
     const unsubscribe = onSnapshot(roundRef, (doc) => {
-      doc.data() && setRound(doc.data() as RoundType);
+      if (doc.data()) {
+        const roundEntity = doc.data() as RoundEntity;
+        setRoundEntity(roundEntity);
+        setStartedAt(roundEntity.updatedAt);
+      }
     });
     return unsubscribe;
-  }, [currentRound]);
+  }, [currentRound, setStartedAt]);
 
   const totalPrice = useMemo(() => {
-    const participants = Object.keys(round).length - 2;
+    const participants = Object.keys(roundEntity).length - 2;
     if (participants < 1000) return 1000;
+    if (participants > 100_000) return 100_000;
     return participants;
-  }, [round]);
-
-  const latestDomination = useMemo(() => round.updatedAt, [round]);
+  }, [roundEntity]);
 
   return {
+    winners,
+    roundEntity,
     currentRound,
     totalPrice,
-    latestDomination,
+    participants: Object.keys(roundEntity).length - 2,
   };
 };
 
